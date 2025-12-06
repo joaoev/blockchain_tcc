@@ -79,6 +79,26 @@ export class MilkContract extends Contract {
     return JSON.stringify(history);
   }
 
+
+@Transaction(false)
+@Returns("string")
+async GetAllBatches(ctx: Context): Promise<string> {
+  const iterator = await ctx.stub.getStateByRange("MILK#", "MILK#\uffff");
+  const batches: MilkBatch[] = [];
+  
+  let result = await iterator.next();
+  while (!result.done) {
+    const value = result.value?.value?.toString();
+    if (value) {
+      batches.push(JSON.parse(value));
+    }
+    result = await iterator.next();
+  }
+  
+  await iterator.close();
+  return JSON.stringify(batches);
+}
+
   // ---------- FLUXO: FAZENDA ----------
 
   /** Cria um lote na fazenda */
