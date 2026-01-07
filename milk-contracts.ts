@@ -61,23 +61,33 @@ export class MilkContract extends Contract {
     return JSON.stringify(batch);
   }
 
-  @Transaction(false)
-  @Returns("string")
-  async GetHistory(ctx: Context, batchId: string): Promise<string> {
-    const iterator = await ctx.stub.getHistoryForKey(keyOf(batchId));
-    const history: any[] = [];
-    for await (const res of iterator as any) {
-      history.push({
-        txId: res.txId,
-        timestamp: res.timestamp?.seconds?.low
-          ? new Date(res.timestamp.seconds.low * 1000).toISOString()
-          : undefined,
-        isDelete: res.isDelete,
-        value: res.value?.toString() || ""
-      });
+@Transaction(false)
+@Returns("string")
+async GetHistory(ctx: Context, batchId: string): Promise<string> {
+  const iterator = await ctx.stub.getHistoryForKey(keyOf(batchId));
+  const history: any[] = [];
+
+  // padrão compatível com versões 2.2.x
+  // que não expõem async iterator
+  while (true) {
+    const res = await iterator.next();
+    if (res.done) {
+      break;
     }
-    return JSON.stringify(history);
+
+    history.push({
+      txId: res.value.txId,
+      timestamp: res.value.timestamp?.seconds?.low
+        ? new Date(res.value.timestamp.seconds.low * 1000).toISOString()
+        : undefined,
+      isDelete: res.value.isDelete,
+      value: res.value.value?.toString() || ""
+    });
   }
+
+  await iterator.close();
+  return JSON.stringify(history);
+}
 
 
 @Transaction(false)
